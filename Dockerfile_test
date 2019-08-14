@@ -1,0 +1,28 @@
+FROM node:8.5.0 as builder 
+MAINTAINER ranpop 
+ENV TZ=Asia/Shanghai LANG="C.UTF-8" 
+ 
+RUN rm /etc/localtime && \     
+ln -s /usr/share/zoneinfo/Asia/Shanghai /etc/localtime 
+WORKDIR /official-ui 
+ADD ./package.json /official-ui 
+#RUN npm install --production --registry=https://registry.npm.taobao.org 
+RUN npm install mirror-config-china --registry=http://registry.npm.taobao.org 
+# RUN npm install --registry=https://registry.npm.taobao.org 
+# RUN npm install --registry=https://registry.npm.taobao.org transform-vue-jsx 
+ADD . /official-ui 
+RUN npm install node-sass 
+RUN npm rebuild node-sass
+RUN npm run build 
+
+
+FROM nginx as prod 
+MAINTAINER Ranpop 
+ENV TZ=Asia/Shanghai LANG="C.UTF-8" 
+WORKDIR /official-ui 
+COPY ./nginx.conf /etc/nginx/nginx.conf 
+COPY --from=builder /official-ui/dist /usr/share/nginx/html 
+COPY --from=builder /official-ui/dist /etc/nginx/html 
+ADD ./start.sh /official-ui 
+EXPOSE 7799
+CMD ["sh", "start.sh"]
